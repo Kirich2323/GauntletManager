@@ -13,6 +13,7 @@ from discord.ext.commands import UserConverter
 from challenge import Context, BotErr
 from xlsx import DefaultWriter, GoogleSheetsWriter, XlsxExporter
 from enum import Enum
+import imgkit
 
 bot = commands.Bot(command_prefix='!')
 bot.remove_command('help')
@@ -447,6 +448,160 @@ async def profile(cmd_ctx, *args):
                 embedVar.set_footer(text=f'Round ends on: {time}')
 
         await cmd_ctx.send(embed=embedVar)
+    except BotErr as e:
+        await cmd_ctx.send(f"{e}\nUsage:\n{profile.help}")
+
+def generate_html(params):
+    html=f'''
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <link rel='stylesheet' href='https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css'>
+        <script>
+            window.addEventListener('load', function () {'{'}
+                window.status = 'loaded'
+            {'}'});
+        </script>
+    </head>
+
+    <body>        
+        <div class="center">
+            <div class="card">
+            <div class="additional" style="background-color: #{hex(0xf000000+params['color'])[3:]}">
+                <div class="user-card">
+                <!-- <div class="level center">
+                    Level 13
+                </div> -->
+                <div class="points center">
+                    Karma: {params['karma']}
+                </div>
+
+                <img src="{params['avatar_url']}" width="110" height="110" class="center" alt="">
+
+                </div>
+            </div>
+            
+            <div class="general">
+                <div class="more-info">
+                    <h1>{params['name']}</h1>
+                    <div class="coords">
+                        <span>work in progress...</span>
+                    </div>
+                    <div class="coords">
+                        <!-- <span>Position/Role</span>
+                        <span>City, Country</span> -->
+                    </div>
+                    
+                    <div class="stats">
+                        <div>
+                        <div class="title">Completed</div>
+                        <i class="fa fa-trophy"></i>
+                        <div class="value">{params['challenges_completed']}</div>
+                        </div>
+                        <!-- <div>
+                        <div class="title">Matches</div>
+                        <i class="fa fa-gamepad"></i>
+                        <div class="value">27</div>
+                        </div> -->
+                        <div>
+                        <div class="title">Avg. Score</div>
+                        <i class="fa fa-wheelchair-alt" aria-hidden="true"></i>
+                        <div class="value">{params['avg_score']}</div>
+                        </div>
+                        <div>
+                        <div class="title">Karma</div>
+                        <img src="{params['karma_url']}" style="width:36px; height:36px" alt="bebe">
+                        <div class="value" style="margin-top: -13px;">{params['karma']}</div>
+                        </div>
+                    </div>
+                    </div>
+            </div>
+            </div>
+        </div>
+    </body>
+  </html>
+'''
+    return html
+
+def render_html(html, out):
+    options = {
+    "enable-local-file-access": None,
+    "height": 500,
+    "width": 900,
+    "disable-smart-width": None,
+    "quiet": None,
+    "window-status": 'loaded',
+    "quality": 100,
+    "zoom": 2,
+    }
+    imgkit.from_string(html, out, options=options, css='styles.css')
+
+@bot.command()
+async def profile2(cmd_ctx, *args):
+    '''!profile2 <@user>\nDisplays user's profile'''
+    try:
+        if len(args) > 1:
+            await cmd_ctx.send(f'Wrong number of arguments.\n{profile.help}')
+            return
+
+        user = cmd_ctx.message.author 
+
+        if len(args) == 1:
+            user = await UserConverter().convert(cmd_ctx, args[0])
+
+        check_cmd_ctx(cmd_ctx, Privilege.USER)
+
+        uname = ctx.get_name(user)
+        avatar_url = str(user.avatar_url).replace("webp", "png")
+
+        ucolor = ctx.get_color(user)
+        border_color = int('0x' + ucolor[1:], 16)
+        #border_color = hex(border_color)
+
+        challenges_num = ctx.get_challenges_num(user)
+        completed_num = 0
+        if challenges_num > 0:
+            completed_num = ctx.get_completed_num(user)
+
+            avg_user_title_score = ctx.calc_avg_user_title_score(user)
+            avg_score_user_gives = ctx.calc_avg_score_user_gives(user)
+
+            most_watched_users = ctx.find_most_watched_users(user)
+            most_showed_users = ctx.find_most_showed_users(user)
+
+        karma, _ = ctx.calc_karma(user.id)
+
+        karma_logo_url = 'https://i.imgur.com/wscUx1m.png'
+        if karma > 200:
+            karma_logo_url = 'https://i.imgur.com/oiypoFr.png'
+        if karma > 300:
+            karma_logo_url = 'https://i.imgur.com/4MOnqxX.png'
+        if karma > 400:
+            karma_logo_url = 'https://i.imgur.com/UJ8yOJ8.png'
+        if karma > 500:
+            karma_logo_url = 'https://i.imgur.com/YoGSX3q.png'
+        if karma > 600:
+            karma_logo_url = 'https://i.imgur.com/DeKg5P5.png'
+        if karma > 700:
+            karma_logo_url = 'https://i.imgur.com/byY9AfE.png'
+        if karma > 800:
+            karma_logo_url = 'https://i.imgur.com/XW4kc66.png'
+        if karma > 900:
+            karma_logo_url = 'https://i.imgur.com/3pPNCGV.png'
+        
+        html_params = {
+            "name": uname,
+            "karma": round(karma,1),
+            "challenges_completed": completed_num,
+            "avatar_url": avatar_url,
+            "avg_score": round(avg_score_user_gives,2),
+            "color": border_color,
+            "karma_url": karma_logo_url,
+        }
+        html_string = generate_html(html_params)
+        render_html(html_string, 'tmp_image.jpg')
+        await cmd_ctx.send(file=discord.File('tmp_image.jpg'))
     except BotErr as e:
         await cmd_ctx.send(f"{e}\nUsage:\n{profile.help}")
 
