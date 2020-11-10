@@ -424,7 +424,7 @@ class Bot(commands.Bot):
             user = await state.fetch_user(user)
             history = await KarmaHistory.fetch_karma_history(self.db, user.id)
             if len(history) == 0:
-                ctx.send(f'{user.name} has no karma history')
+                await ctx.send(f'{user.name} has no karma history')
                 return
 
             times = [ entry.time for entry in history ]
