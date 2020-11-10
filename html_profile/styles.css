@@ -1,0 +1,186 @@
+@import url('https://fonts.googleapis.com/css?family=Abel');
+
+html, body {
+  background: #FCEEB5;
+  font-family: Abel, Arial, Verdana, sans-serif;
+}
+
+.center {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  -webkit-transform: translate(-50%, -50%);
+}
+
+.card {
+  width: 450px;
+  height: 250px;
+  background-color: #ffffff;
+  box-shadow: 0 8px 16px -8px rgba(0,0,0,0.4);
+  border-radius: 6px;
+  overflow: hidden;
+  position: relative;
+  margin: 1.5rem;
+}
+
+.additional {
+  position: absolute;
+  width: 150px;
+  height: 100%;
+  background-color:#ff0000;
+  overflow: hidden;
+  z-index: 2;
+}
+
+.avatar {
+  top: 50%;
+  border-radius: 50%;
+}
+
+.user-name {
+  top: 18%;
+  color: #eee;
+  font-size: 16px;
+  white-space: nowrap;
+  background: rgba(0,0,0,0.2);
+  padding: 0.125rem 0.75rem;
+  border-radius: 100px;
+  font-weight: bold;
+}
+
+/* border line */
+.line{
+  width: 0px;
+  height: 500px;
+  border: 2px solid black;
+  position: absolute;
+  top: 0px;
+  left: 150px;
+  z-index: 10;
+}
+
+.stats {
+  bottom: 1rem;
+  left: 1rem;
+  right: 1rem;
+  top: 18px;
+
+  position: absolute;
+  font-size: 2rem;
+  color: #000;
+  position: absolute;
+  text-align: center
+}
+
+.stats > div {
+  width: 86px;
+  height: 100px;
+  /* border: 1px solid black; */
+  border-radius: 10%;
+  position: absolute;
+}
+
+.avg-score {
+  top: 0%;
+  left: 1px;
+}
+
+.completed {
+  top: 0%;
+  left: 88px;
+}
+
+.karma {
+  top: 0%;
+  left: 175px;
+}
+
+.your-avg-score {
+  top: 107px;
+  left: 1px;
+}
+
+.got-sniped {
+  top: 107px;
+  left: 88px;
+}
+
+.sniped {
+  top: 107px;
+  left: 175px;
+}
+
+.sniped-wrapper {
+  width: auto;
+  height: 10px;
+  /* text-align: initial; */
+}
+
+.sniped-name {
+  padding: 0px 4px;
+  font-size: 8px;
+  left: 0%;
+  font-weight: bold;
+  display: inline-block;
+  vertical-align: top;
+  text-align: left;
+  position: absolute;
+}
+
+.sniped-value {
+  padding: 0px 4px;
+  font-size: 8px;
+  left: 80%;
+  font-weight: bold;
+  display: inline-block;
+  vertical-align: top;
+  text-align: right;
+  position: absolute;
+}
+
+.awards {
+  display: block;
+  top: 85%;
+  color: #fff;
+  text-transform: uppercase;
+  font-size: 0.75em;
+  font-weight: bold;
+  background: rgba(0,0,0,0.45);
+  padding: 0.125rem 0.75rem;
+  border-radius: 100px;
+  white-space: wrap;
+  width: 120px;
+  height: 40px;
+}
+
+.award {
+  width: 12px;
+  height: 14px;
+  border: 1px dotted gainsboro;
+  border-radius: 50%;
+  padding: 0px 1px;
+}
+
+.title {
+  font-size: 0.75rem;
+  font-weight: bold;
+  text-transform: uppercase;
+}
+
+.value{
+  font-size: 1.5rem;
+  font-weight: bold;
+  line-height: 1.5rem;
+}
+
+.general {
+  width: 300px;
+  height: 100%;
+  position: absolute;
+  top: 0;
+  right: 0;
+  z-index: 1;
+  box-sizing: border-box;
+  padding-top: 0;
+}

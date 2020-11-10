@@ -1,0 +1,9 @@
+*.txt
+*.db
+*.json
+*.html
+.vscode/*
+**/__pycache__/*
+
+
+!requirements.txt
