@@ -417,11 +417,11 @@ class Bot(commands.Bot):
         await user.remove_award(url)
 
     async def karma_graph(self, ctx, users):
-        state = await State.fetch(self, ctx, allow_started=True)
+        # state = await State.fetch(self, ctx, allow_started=True)
         fig = plt.figure()
         plt.xticks(rotation=30)
         for user in users:
-            user = await state.fetch_user(user)
+            user = await User.fetch_or_insert(self.db, user.id, user.name) # todo: fix fetching user being state function # await state.fetch_user(user)
             history = await KarmaHistory.fetch_karma_history(self.db, user.id)
             if len(history) == 0:
                 await ctx.send(f'{user.name} has no karma history')
