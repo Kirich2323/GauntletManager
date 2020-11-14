@@ -91,7 +91,7 @@ CREATE TABLE award (
 	"url" TEXT DEFAULT NULL,
 	"time" TIMESTAMP NOT NULL,
 	FOREIGN KEY (participant_id) REFERENCES participant (id)
-)
+);
 
 CREATE TABLE karma_history (
 	user_id INTEGER NOT NULL,
@@ -99,4 +99,4 @@ CREATE TABLE karma_history (
 	"time" TIMESTAMP NOT NULL,
 
 	FOREIGN KEY (user_id) REFERENCES user (id)
-)
+);

@@ -5,5 +5,5 @@
 .vscode/*
 **/__pycache__/*
 
-
+!example-config.json
 !requirements.txt
