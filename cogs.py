@@ -433,9 +433,9 @@ class User(commands.Cog):
             raise BotErr(f'Invalid progress "{progress}".')
     
     @commands.command()
-    async def profile2(self, ctx, user: UserConverter = None):
+    async def profile(self, ctx, user: UserConverter = None):
         '''
-        !profile2 [@user=author]
+        !profile [@user=author]
         Displays user's profile
         '''
         if user is None:
