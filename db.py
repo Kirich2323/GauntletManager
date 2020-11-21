@@ -298,14 +298,16 @@ class Pool(Relation):
             f'SELECT { Title.COLS } FROM title WHERE pool_id = ? AND is_used = 0', [self.id])
         return [Title(self.db, row) for row in rows]
 
-    async def add_title(self, participant_id, name, url=None, is_used=False):
+    async def add_title(self, participant_id, name, url, score, num_of_episodes, duration, difficulty, is_hidden, is_used=False):
         id = (await self.db.execute(
-            'INSERT INTO title (pool_id, participant_id, name, url, is_used) VALUES (?, ?, ?, ?, ?)',
-            [self.id, participant_id, name, url, is_used])).lastrowid
-        return Title(self.db, [id, self.id, participant_id, name, url, is_used])
+            '''INSERT INTO title (pool_id, participant_id, name, url, is_used, is_hidden, score, num_of_episodes, duration, difficulty)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)''',
+            [self.id, participant_id, name, url, is_used, is_hidden, score, num_of_episodes, duration, difficulty])).lastrowid
+
+        return Title(self.db, [id, self.id, participant_id, name, url, is_used, is_hidden, score, duration, num_of_episodes, difficulty])
 
 class Title(Relation):
-    COLS = Cols('id', 'pool_id', 'participant_id', 'name', 'url', 'is_used')
+    COLS = Cols('id', 'pool_id', 'participant_id', 'name', 'url', 'is_used', 'is_hidden', 'score', 'duration', 'num_of_episodes', 'difficulty')
 
     def __init__(self, db, row):
         super().__init__(db, 'title', Title.COLS, Cols('id'), row)

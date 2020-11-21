@@ -57,6 +57,10 @@ CREATE TABLE title (
 	name TEXT NOT NULL,
 	url TEXT,
 	is_used BOOLEAN NOT NULL DEFAULT 0,
+	score FLOAT NOT NULL DEFAULT,
+	duration INTEGER NOT NULL,
+	difficulty INTEGER NOT NULL,
+	num_of_episodes INTEGER NOT NULL,
 
 	FOREIGN KEY (pool_id) REFERENCES pool (id),
 	FOREIGN KEY (participant_id) REFERENCES participant (id) ON DELETE CASCADE
