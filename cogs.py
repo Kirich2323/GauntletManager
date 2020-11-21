@@ -158,15 +158,21 @@ class Admin(commands.Cog):
         await ctx.send(f'Round {rnd.num} ends on {short_fmt(rnd.finish_time)}.')
 
     @commands.command()
-    async def random_swap(self, ctx, user1: UserConverter, candidate1: UserConverter, *other: UserConverter):
+    async def random_swap(self, ctx, user1: UserConverter, *candidates: UserConverter):
         '''
         !random_swap @user @candidate1 [@candidate2...]
         [Admin only] Swaps user's title with random candidate's title
         '''
-        candidates = [candidate1] + list(other)
+
+        candidates = list(candidates)
         if user1 in candidates:
             return await ctx.send("Can't swap titles between the same user.")
+
+        if len(candidates) > 0:
         user2 = random.choice(candidates)
+        else:
+            user2 = None
+
         title1, title2 = await self.bot.swap(ctx, user1, user2)
         await ctx.send(f'User {user1.mention} got "{title2}". User "{user2.mention}" got "{title1}".')
         await self.bot.sync(ctx)

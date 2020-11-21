@@ -405,12 +405,15 @@ class Bot(commands.Bot):
         state = await State.fetch(self, ctx, allow_started=True)
         last_round = await state.fetch_last_round()
         participant1 = await state.fetch_participant(user1)
+        if user2 == None:
+            participants = await state.cc.fetch_participants()
+            participants = [ p for p in participants if p.id != participant1.id ]
+            participant2 = random.choice(participants)
+        else:
         participant2 = await state.fetch_participant(user2)
         roll1 = await last_round.fetch_roll(participant1.id)
         roll2 = await last_round.fetch_roll(participant2.id)
-        tmp = roll1.title_id
-        roll1.title_id = roll2.title_id
-        roll2.title_id = tmp
+        roll1.title_id, roll2.title_id = roll2.title_id, roll1.title_id
         await roll1.update()
         await roll2.update()
         await self.db.commit()
