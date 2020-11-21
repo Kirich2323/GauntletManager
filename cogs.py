@@ -419,56 +419,6 @@ class User(commands.Cog):
         table = table_format(map(lambda x: (str(x[0] + 1) + ')', x[1]), enumerate(await self.bot.karma_table(ctx))))
         await ctx.send(f"```markdown\n{ table }```")
 
-    @commands.command()
-    async def profile(self, ctx, user: UserConverter = None):
-        '''
-        !profile [@user=author]
-        Displays user's profile
-        '''
-        if user is None:
-            user = ctx.message.author
-
-        avatar_url = str(user.avatar_url)
-        user, stats = await self.bot.user_profile(ctx, user)
-        e = Embed(title="", description='', color=int('0x' + user.color[1:], 16))
-        e.set_author(name=user.name, icon_url=avatar_url)
-        e.set_thumbnail(url=avatar_url)
-        if stats.num_challenges > 0:
-            e.add_field(name="Challenges", value=str(stats.num_challenges), inline=True)
-            e.add_field(name="Completed", value=str(stats.num_completed), inline=True)
-            if stats.avg_title_score is not None:
-                e.add_field(name="Avg. Score of Your Titles", value=f"{stats.avg_title_score:.2f}", inline=False)
-            if stats.avg_rate is not None:
-                e.add_field(name="Avg. Score You Give", value=f"{stats.avg_rate:.2f}", inline=True)
-            if len(stats.most_watched) > 0:
-                e.add_field(name='Watched the most', value=table_format(stats.most_watched), inline=False)
-            if len(stats.most_sniped) > 0:
-                e.add_field(name='Sniped the most', value=table_format(stats.most_sniped), inline=False)
-        else:
-            e.add_field(name="No Challenges", value='Empty', inline=True)
-
-        e.add_field(name="Karma", value=str(round(stats.karma, 2)), inline=False)
-        karma_urls = [
-            'https://i.imgur.com/wscUx1m.png',
-            'https://i.imgur.com/wscUx1m.png', # <-- two black hearts
-            'https://i.imgur.com/oiypoFr.png',
-            'https://i.imgur.com/4MOnqxX.png',
-            'https://i.imgur.com/UJ8yOJ8.png',
-            'https://i.imgur.com/YoGSX3q.png',
-            'https://i.imgur.com/DeKg5P5.png',
-            'https://i.imgur.com/byY9AfE.png',
-            'https://i.imgur.com/XW4kc66.png',
-            'https://i.imgur.com/3pPNCGV.png',
-        ]
-        url_idx = math.floor(stats.karma / 100)
-        url_idx = min(url_idx, len(karma_urls))
-        e.set_image(url=karma_urls[url_idx])
-
-        if stats.finish_time is not None:
-            e.set_footer(text=f'Round ends on: {stats.finish_time}')
-
-        return await ctx.send(embed=e)
-
     async def set_progress(self, ctx, user, progress):
         p1 = re.match(r'^(\d{1,2})\/(\d{1,2})$', progress) # x/y
         p2 = re.match(r'^\+(\d{1,2})?$', progress) # +x
