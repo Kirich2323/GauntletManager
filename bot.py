@@ -7,6 +7,7 @@ import aiosqlite
 import sqlite3
 import json
 import matplotlib.pyplot as plt
+import seaborn as sns
 
 from discord import File
 from discord.ext import commands
@@ -545,6 +546,7 @@ class Bot(commands.Bot):
 
     async def karma_graph(self, ctx, users):
         # state = await State.fetch(self, ctx, allow_started=True)
+        sns.set_theme()
         fig = plt.figure()
         plt.xticks(rotation=30)
         for user in users:
