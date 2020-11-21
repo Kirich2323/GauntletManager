@@ -16,6 +16,7 @@ from db import Db, Guild, Challenge, Pool, User, Participant, Title, Roll, Karma
 from export import export
 from thirdparty_api.api_title_info import ApiTitleInfo
 from utils import gen_fname
+from time import sleep
 
 class State:
     @staticmethod
@@ -286,6 +287,38 @@ class Bot(commands.Bot):
         await self.db.commit()
         return new_round, { users[p.user_id].name: t.name for p, t in zip(participants, rand_titles) }
 
+    async def round_info(self, ctx):
+        state = await State.fetch(self, ctx, allow_started=True)
+        lr = await state.fetch_last_round()
+        if lr.is_finished:
+            await ctx.send("No running rounds")
+            return
+
+        await ctx.send(f"Round {lr.num} finishes on {lr.finish_time}")
+
+    async def refill_title_info(self, ctx):
+        guild = await Guild.fetch_or_insert(self.db, ctx.message.guild.id)
+
+        challenges = await guild.fetch_challenges()
+        for c in challenges:
+            titles = await c.fetch_titles()
+            for title in titles:
+                for i in range(5):
+                    try:
+                        sleep(0.2)
+                        print(title.name)
+                        title_info = self.get_api_title_info(title.url)
+                        title.score = title_info.score
+                        title.duration = title_info.duration
+                        title.num_of_episodes = title_info.num_of_episodes
+                        title.difficulty = title_info.difficulty
+                        await title.update()
+                        break
+                    except:
+                        print(f"Failed: {i}")
+                        pass
+        await self.db.commit()
+
     async def calc_karma(self, round):
         if not round.is_finished:
             return
@@ -419,6 +452,25 @@ class Bot(commands.Bot):
         users = [ (user, await KarmaHistory.fetch_user_karma(self.db, user.id)) for user in await guild.fetch_users() ]
         users = sorted(users, key=lambda x: x[1], reverse=True)
         return [(u[0].name, '{:.1f}'.format(u[1])) for u in users]
+
+    async def difficulty_table(self, ctx, challenge_name=None, user=None):
+        state = await State.fetch(self, ctx, allow_started=True)
+        guild = await Guild.fetch_or_insert(self.db, ctx.message.guild.id)
+        titles = []
+        if challenge_name:
+            challenge = await guild.fetch_challenge(challenge_name)
+            titles = await challenge.fetch_titles()
+        else:
+            for c in await guild.fetch_challenges():
+                for t in await c.fetch_titles():
+                    titles.append(t)
+        
+        if user != None:
+            participant = await state.fetch_participant(user) # todo: fetch all participants 
+            titles = [ x for x in titles if x.participant_id == participant.id ] # todo: fets user all titles
+        
+        titles = sorted(titles, key=lambda x: x.difficulty, reverse=True)[:20]
+        return [(t.name, f'{t.difficulty}') for t in titles]
 
     async def user_profile(self, ctx, user):
         guild = await Guild.fetch_or_insert(self.db, ctx.message.guild.id)

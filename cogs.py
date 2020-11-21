@@ -355,6 +355,17 @@ class Admin(commands.Cog):
         await self.bot.sync(ctx)
         await ctx.send('Done.')
 
+    @commands.command()
+    async def refill_title_info(self, ctx):
+        '''
+        !refill_title_info
+        Refills titles info
+        '''
+        await self.bot.refill_title_info(ctx)
+        await ctx.send('Done.')
+
+# ----------------- User Cog ---------------------
+
 class User(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
@@ -637,6 +648,43 @@ class User(commands.Cog):
         await self.bot.remove_title(ctx, title, is_admin)
         await ctx.send(f'Title "{title}" has been removed')
         await self.bot.sync(ctx)
+
+    @commands.command()
+    async def round_info(self, ctx):
+        '''
+        !round_info
+        Shows round info
+        '''
+        await self.bot.round_info(ctx)
+
+    @commands.command()
+    async def difficulty_user(self, ctx, *args):
+        '''
+        !difficulty_user [@user=author] [@challenge=None]
+        Shows the most difficult titles
+        '''
+
+        if len(args) > 0:
+            user = await user_or_none(ctx, args[0])
+        
+        if user == None:
+            user = ctx.message.author
+
+        challenge = None   
+        if len(args) > 1:
+            challenge = args[1]
+
+        table = table_format(map(lambda x: (str(x[0] + 1) + ')', x[1]), enumerate(await self.bot.difficulty_table(ctx, challenge, user))))
+        await ctx.send(f"```markdown\n{ table }```")
+
+    @commands.command()
+    async def difficulty_all(self, ctx, challenge=None):
+        '''
+        !difficulty_all [@challenge=None]
+        Shows the most difficult titles
+        '''
+        table = table_format(map(lambda x: (str(x[0] + 1) + ')', x[1]), enumerate(await self.bot.difficulty_table(ctx, challenge))))
+        await ctx.send(f"```markdown\n{ table }```")
 
     async def parse_guild_id(self, *_args):
         args = [ x for x in _args ]

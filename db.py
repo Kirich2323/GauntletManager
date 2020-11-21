@@ -1,6 +1,7 @@
 import aiosqlite
 from datetime import datetime
 from cogs import BotErr
+from fuzzywuzzy import process
 
 class Db:
     def __init__(self, db):
@@ -115,6 +116,10 @@ class Guild(Relation):
             WHERE C.guild_id = ?''', [self.id])
         return [User(self.db, row) for row in rows]
 
+    async def fetch_challenge(self, challenge_name):
+        return await fromrow(Challenge, self.db, f'''
+            SELECT {Challenge.COLS} FROM challenge WHERE guild_id=? AND name=?''', [self.id, challenge_name])
+
     async def fetch_challenges(self):
         rows = await self.db.fetchall(f'''
             SELECT { Challenge.COLS.join(prefix='C.') } FROM challenge C
@@ -210,10 +215,16 @@ class Challenge(Relation):
             WHERE P.challenge_id = ? AND T.name = ?''', [self.id, title])
 
     async def fetch_title(self, title):
-        return await fromrow(Title, self.db, f'''
+        rows = await self.db.fetchall(f'''
             SELECT { Title.COLS.join(prefix='T.') } FROM title T
             JOIN pool P ON P.id = T.pool_id
-            WHERE P.challenge_id = ? AND T.name = ?''', [self.id, title])
+            WHERE P.challenge_id = ?''', [self.id])
+        name_to_id = { x[3]:i for i,x in enumerate(rows) }
+        match = process.extract(title, name_to_id.keys(), limit=1)
+        if match[0][1] < 60: # match threshold
+            return None # or raise error?
+        row = rows[name_to_id[match[0][0]]]
+        return Title(self.db, row)
 
     async def fetch_titles(self):
         rows = await self.db.fetchall(f'''
