@@ -340,7 +340,7 @@ class Admin(commands.Cog):
         !set_award url
         [Admin only] Sets an award for current challenge
         '''
-        if not is_vaild_url(url):
+        if not is_valid_url(url):
             raise InvalidUrl()
         await self.bot.set_award(ctx, url)
         await ctx.send('Done.')
@@ -351,7 +351,7 @@ class Admin(commands.Cog):
         !add_award @user url
         [Admin only] Adds an award for a user
         '''
-        if not is_vaild_url(url):
+        if not is_valid_url(url):
             raise InvalidUrl()
         await self.bot.add_award(ctx, user, url)
         await ctx.send('Done.')
@@ -362,7 +362,7 @@ class Admin(commands.Cog):
         !add_award @user url
         [Admin only] Removes an award from a user
         '''
-        if not is_vaild_url(url):
+        if not is_valid_url(url):
             raise InvalidUrl()
         await self.bot.remove_award(ctx, user, url)
         await ctx.send('Done.')
