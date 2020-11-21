@@ -376,6 +376,23 @@ class Admin(commands.Cog):
         await self.bot.recalc_karma(ctx)
         await ctx.send('Done.')
 
+    @commands.command()
+    async def ban_user(self, ctx, user : UserConverter):
+        '''
+        !ban_user @user
+        Bans user from the challenge
+        '''
+        await self.bot.ban_user(ctx, user)
+        await ctx.send('Done.')
+
+    @commands.command()
+    async def unban_user(self, ctx, user : UserConverter):
+        '''
+        !unban_user @user
+        Unbans user from the challenge
+        '''
+        await self.bot.unban_user(ctx, user)
+        await ctx.send('Done.')
 class User(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
@@ -597,4 +614,26 @@ class User(commands.Cog):
         if len(args) > 0:
             users = [ await UserConverter().convert(ctx, a) for a in args ]
         await self.bot.karma_graph(ctx, users)
-        # await ctx.send('Done.')
+
+    @commands.command()
+    async def join(self, ctx):
+        '''
+        !join
+        Join current challenge
+        '''
+        user = ctx.message.author
+        await self.bot.add_user(ctx, user)
+        await ctx.send(f'User {user.mention} has been added.')
+        await self.bot.sync(ctx)
+
+    @commands.command()
+    async def quit(self, ctx):
+        '''
+        !quit
+        Quit current challenge
+        '''
+        user = ctx.message.author
+        await self.bot.remove_user(ctx, user)
+        await ctx.send(f'User {user.mention} has been removed.')
+        await self.bot.sync(ctx)
+

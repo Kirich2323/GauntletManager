@@ -11,7 +11,7 @@ import matplotlib.pyplot as plt
 from discord import File
 from discord.ext import commands
 from datetime import datetime, timedelta
-from cogs import BotErr
+from cogs import BotErr, GuildAmbiguity
 from db import Db, Guild, Challenge, Pool, User, Participant, Title, Roll, KarmaHistory, UserStats
 from export import export
 from thirdparty_api.api_title_info import ApiTitleInfo
@@ -19,8 +19,8 @@ from utils import gen_fname
 
 class State:
     @staticmethod
-    async def fetch(bot, ctx, allow_started=False):
-        guild = await Guild.fetch_or_insert(bot.db, ctx.message.guild.id)
+    async def fetch(bot, ctx, allow_started=False, guild_id = None):
+        guild = await bot.fetch_guild_from_ctx(ctx, guild_id)
         cc = await guild.fetch_current_challenge()
         BotErr.raise_if(cc is None, 'Create a new challenge first.')
         BotErr.raise_if(cc is not None and not allow_started and await cc.has_started(),
@@ -68,6 +68,12 @@ class State:
             or not allow_past_deadline and datetime.now() > lr.finish_time), 'Round has ended.')
         return lr
 
+    async def fetch_banned_users(self):
+        return await self.cc.fetch_banned_users()
+
+    async def is_user_banned(self, user):
+        return user.id in [ x.id for x in await self.fetch_banned_users() ]
+
 class Bot(commands.Bot):
     def __init__(self, db, config):
         super().__init__(command_prefix='!')
@@ -92,6 +98,10 @@ class Bot(commands.Bot):
 
     def get_api_title_info(self, url):
         return ApiTitleInfo.from_url(url, self.config)
+
+    async def has_pool(self, ctx, pool_name, guild_id = None):
+        state = await State.fetch(self, ctx, guild_id = guild_id, allow_started=True)
+        return await state.cc.has_pool(pool_name)
 
     async def current_titles(self, ctx):
         state = await State.fetch(self, ctx, allow_started=True)
@@ -141,10 +151,16 @@ class Bot(commands.Bot):
 
     async def add_user(self, ctx, user):
         state = await State.fetch(self, ctx)
+        u = await state.fetch_user(user)
+
+        BotErr.raise_if(await state.is_user_banned(u),
+            f'User {user.mention} is banned in this challenge')
+        BotErr.raise_if(await state.cc.has_started(),
+            f'The challenge has already started.')
         BotErr.raise_if(await state.has_participant(user),
             f'User {user.mention} is already participating in this challenge.')
-        user = await state.fetch_user(user)
-        await state.cc.add_participant(user.id)
+
+        await state.cc.add_participant(u.id)
         await self.db.commit()
 
     async def remove_user(self, ctx, user):
@@ -158,16 +174,64 @@ class Bot(commands.Bot):
             await participant.delete()
         await self.db.commit()
 
-    async def add_title(self, ctx, pool, user, name, url):
-        state = await State.fetch(self, ctx)
+    async def ban_user(self, ctx, user):
+        state = await State.fetch(self, ctx, allow_started=True)
+        u = await state.fetch_user(user)
+        BotErr.raise_if(await state.is_user_banned(u),
+            f'User {user.mention} has already been banned')
+        await state.cc.add_banned_user(u)
+        await self.db.commit()
+
+    async def unban_user(self, ctx, user):
+        state = await State.fetch(self, ctx, allow_started=True)
+        u = await state.fetch_user(user)
+        BotErr.raise_if(not await state.is_user_banned(u),
+            f'User {user.mention} is not banned')
+        await state.cc.remove_banned_user(u)
+        await self.db.commit()
+
+    async def add_title(self, ctx, params, is_admin=False):
+        # ? maybe move it into a class
+        state = await State.fetch(self, ctx, guild_id = params['guild_id'], allow_started=is_admin)
+        name = params['title_name']
+        user = params['user']
+        pool = params['pool']
+        url = params['url']
+
+        if 'is_hidden' in params:
+            is_hidden = params['is_hidden']
+        else:
+            is_hidden = False
+        
+        score = params['score']
+        duration = params['duration']
+        num_of_episodes = params['num_of_episodes']
+        difficulty = params['difficulty']
+
         BotErr.raise_if(await state.cc.has_title(name), f'Title "{name}" already exists.')
         participant = await state.fetch_participant(user)
         pool = await state.fetch_pool(pool)
         await pool.add_title(participant.id, name, url)
         await self.db.commit()
 
-    async def remove_title(self, ctx, name):
-        state = await State.fetch(self, ctx)
+    async def fetch_guild_from_ctx(self, ctx, guild_id):
+        guild = ctx.message.guild
+        if guild:
+            guild = await Guild.fetch_or_insert(self.db, guild.id)
+        else: # we're in dms, so we try to deduce the guild from db
+            author = ctx.message.author
+            user = await User.fetch_or_insert(self.db, author.id, author.name)
+            active_guilds = await user.fetch_active_guilds()
+
+            if guild_id == None and len(active_guilds) > 1:
+                raise GuildAmbiguity(active_guilds)
+            BotErr.raise_if(len(active_guilds) == 0, 'No active guilds')
+
+            guild = active_guilds[0]
+            if guild_id:
+                guild = [ g for g in active_guilds if g.id == guild_id ][0]
+        return guild
+
         title = await state.fetch_title(name)
         BotErr.raise_if(title.is_used, "Cannot delete title that's already been used.")
         await title.delete()
@@ -388,8 +452,8 @@ class Bot(commands.Bot):
         await guild.update()
         await self.db.commit()
 
-    async def sync(self, ctx):
-        state = await State.fetch(self, ctx, allow_started=True)
+    async def sync(self, ctx, guild_id=None):
+        state = await State.fetch(self, ctx, allow_started=True, guild_id=guild_id)
         BotErr.raise_if(state.guild.spreadsheet_key is None, 'Spreadsheet key is not set.')
         await export(state.guild.spreadsheet_key, state.cc)
 

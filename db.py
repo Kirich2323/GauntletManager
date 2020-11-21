@@ -141,11 +141,21 @@ class User(Relation):
     async def remove_award(self, award_url):
         await self.db.execute('DELETE FROM award WHERE url = ? AND user_id = ?', [award_url, self.id])
 
+    async def fetch_active_guilds(self):
+        rows = await self.db.fetchall(f'''
+        SELECT { Guild.COLS.join(prefix='G.') }
+        FROM guild G
+        JOIN challenge C ON C.guild_id = G.id
+        JOIN participant P ON C.id = P.challenge_id 
+        WHERE G.current_challenge_id IS NOT NULL AND C.id = G.current_challenge_id AND P.user_id = ? AND P.failed_round_id IS NULL
+        ''', [self.id])
+        return [ Guild(self.db, row) for row in rows ]
+
     def __init__(self, db, row):
         super().__init__(db, 'user', User.COLS, Cols('id'), row)
 
 class Challenge(Relation):
-    COLS = Cols('id', 'guild_id', 'name', 'start_time', 'finish_time', 'award_url')
+    COLS = Cols('id', 'guild_id', 'name', 'start_time', 'finish_time', 'award_url', 'allow_hidden')
 
     @staticmethod
     async def fetch_current_challenge(db, guild_id):
@@ -240,6 +250,20 @@ class Challenge(Relation):
 
     async def set_award(self, award_url):
         await self.db.execute('UPDATE challenge SET award_url = ? WHERE id = ?', [award_url, self.id])
+
+    async def add_banned_user(self, user):
+        await self.db.execute('INSERT INTO banned_user (user_id, challenge_id) VALUES(?,?)', [user.id, self.id])
+
+    async def remove_banned_user(self, user):
+        await self.db.execute('DELETE FROM banned_user WHERE user_id = ? AND challenge_id = ?', [user.id, self.id])
+
+    async def fetch_banned_users(self):
+        rows = await self.db.fetchall(f'''
+        SELECT { User.COLS.join(prefix='U.') }
+        FROM banned_user BU
+        JOIN user U ON BU.user_id = U.id
+        WHERE BU.challenge_id = ?''', [self.id])
+        return [ User(self.db, row) for row in rows ]
 
 class Participant(Relation):
     COLS = Cols('id', 'challenge_id', 'user_id', 'failed_round_id', 'progress_current', 'progress_total')
