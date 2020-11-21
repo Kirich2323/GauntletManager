@@ -11,7 +11,7 @@ from discord.ext.commands import UserConverter, CommandError
 from datetime import timedelta
 from html_profile.generator import generate_profile_html
 from html_profile.renderer import render_html_from_string
-from utils import is_vaild_url
+from utils import is_valid_url
 
 class BotErr(CommandError):
     def __init__(self, text):
@@ -37,8 +37,19 @@ class InvalidCog(BotErr):
     def __init__(self):
         super().__init__('Invalid cog name.')
 
+class GuildAmbiguity(BotErr):
+    def __init__(self, guilds):
+        super().__init__('Guild ambiguity.')
+        self.guilds = guilds
+
+def _is_admin(ctx):
+    return 'bot commander' in map(lambda x: x.name.lower(), ctx.message.author.roles)
+
+def _is_in_dm(ctx):
+    return ctx.guild == None
+
 def require_admin_privilege(ctx):
-    if 'bot commander' not in map(lambda x: x.name.lower(), ctx.message.author.roles):
+    if not _is_admin(ctx):
         raise BotErr('"Bot Commander" role required.')
 
 def table_format(data, min_col_spacing=None):
@@ -94,58 +105,6 @@ class Admin(commands.Cog):
         '''
         await self.bot.add_pool(ctx, name)
         await ctx.send(f'Pool "{name}" has been created.')
-        await self.bot.sync(ctx)
-
-    @commands.command()
-    async def add_title(self, ctx, *args):
-        '''
-        !add_title [pool='main'] @user title [url]
-        [Admin only] Adds a title for specified user
-        '''
-
-        if len(args) < 2 or len(args) > 4:
-            raise InvalidNumArguments()
-
-        pool = 'main'
-        url = None
-        user = await user_or_none(ctx, args[0])
-        title = args[1]
-
-        if user is None:
-            if len(args) < 3:
-                raise InvalidNumArguments()
-            if len(args) == 4:
-                url = args[-1]
-            pool = args[0]
-            title = args[2]
-            user = await UserConverter().convert(ctx, args[1])
-        elif len(args) == 3:
-            url = args[-1]
-
-        await self.bot.add_title(ctx, pool, user, title, url)
-        await ctx.send(f'Title "{title}" has been added to "{pool}" pool.')
-        await self.bot.sync(ctx)
-
-    @commands.command()
-    async def add_title2(self, ctx, user: UserConverter, url: str, **kwargs):
-        '''
-        !add_title2 @user url [title] [pool='main']
-        [Admin only] Adds a title for specified user
-        '''
-        pool = 'main'
-        
-        if 'pool' in kwargs:
-            pool = kwargs['pool']
-
-        title_info = self.bot.get_api_title_info(url)
-        print(title_info)
-        if 'title' not in kwargs:
-            title = title_info.name
-        else:
-            title = kwargs['title']
-
-        await self.bot.add_title(ctx, pool, user, title, url)
-        await ctx.send(f'Title "{title}" has been added to "{pool}" pool.')
         await self.bot.sync(ctx)
 
     @commands.command()
@@ -220,16 +179,6 @@ class Admin(commands.Cog):
         '''
         await self.bot.remove_pool(ctx, name)
         await ctx.send(f'Pool "{name}" has been removed')
-        await self.bot.sync(ctx)
-
-    @commands.command()
-    async def remove_title(self, ctx, title: str):
-        '''
-        !remove_title title
-        [Admin only] Removes a specified title
-        '''
-        await self.bot.remove_title(ctx, title)
-        await ctx.send(f'Title "{title}" has been removed')
         await self.bot.sync(ctx)
 
     @commands.command()
@@ -313,6 +262,8 @@ class Admin(commands.Cog):
             await asyncio.sleep(1)
 
         await ctx.send(f'Round {rnd.num} ({short_fmt(rnd.start_time)} - {short_fmt(rnd.finish_time)}) starts right now.')
+        self.bot.set_is_allowed_hidden(ctx, 0)
+
         await self.bot.sync(ctx)
 
     @commands.command()
@@ -393,6 +344,17 @@ class Admin(commands.Cog):
         '''
         await self.bot.unban_user(ctx, user)
         await ctx.send('Done.')
+
+    @commands.command()
+    async def set_allow_hidden(self, ctx, val: bool):
+        '''
+        !set_allow_hidden @val
+        Sets is_allowed_hidden to @val
+        '''
+        await self.bot.set_allow_hidden(ctx, val)
+        await self.bot.sync(ctx)
+        await ctx.send('Done.')
+
 class User(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
@@ -637,3 +599,90 @@ class User(commands.Cog):
         await ctx.send(f'User {user.mention} has been removed.')
         await self.bot.sync(ctx)
 
+    @commands.command()
+    async def add_title(self, ctx, *args):
+        '''
+        !add_title [@user=author] url [title] [pool='main'] [challenge_id]
+        Adds a title for specified user
+        '''
+        try:
+            guild_id, args = await self.parse_guild_id(*args)
+            params = await self.parse_title_args(ctx, guild_id, *args)
+            if _is_in_dm(ctx):
+                params['is_hidden'] = True
+            is_admin = _is_admin(ctx)
+
+            if params['user'] != ctx.message.author:
+                require_admin_privilege(ctx)
+
+            await self.bot.add_title(ctx, params, is_admin)
+            await ctx.send(f'Done')
+            await self.bot.sync(ctx, guild_id)
+        except GuildAmbiguity as e:
+            challenges = []
+            for g in e.guilds:
+                cc = await g.fetch_current_challenge()
+                challenges.append(cc)
+
+            challenge_to_id_str = '\n'.join([ f'    {c.name} --> ${c.guild_id}' for c in challenges ])
+            await ctx.send(f'Guild ambiguity detected:\n{challenge_to_id_str}\nPlease specify guild_id in your command, for example $1.')
+
+    @commands.command()
+    async def remove_title(self, ctx, title: str):
+        '''
+        !remove_title title
+        Removes a specified title
+        '''
+        is_admin = _is_admin(ctx)
+        await self.bot.remove_title(ctx, title, is_admin)
+        await ctx.send(f'Title "{title}" has been removed')
+        await self.bot.sync(ctx)
+
+    async def parse_guild_id(self, *_args):
+        args = [ x for x in _args ]
+        
+        guild_id_prefix = '$'
+        for i in range(len(args)):
+            if guild_id_prefix in args[i]:
+                id = int(args[i][len(guild_id_prefix):])
+                args.pop(i)
+                return id, args
+        return None, args
+
+    async def parse_title_args(self, ctx, guild_id, *_args):
+        args = [ x for x in _args ]
+
+        params = {}
+        params['user'] = ctx.message.author
+        params['pool'] = 'main' # todo: make so default pool isn't main but the first pool in a challenge
+        params['guild_id'] = guild_id
+
+        for i, arg in enumerate(args):
+            if is_valid_url(arg):
+                params['url'] = arg
+                args[i] = None
+            
+            usr = await user_or_none(ctx, arg)
+            if usr:
+                params['user'] = usr
+                args[i] = None
+            
+            if await self.bot.has_pool(ctx, arg, params['guild_id']):
+                params['pool'] = arg
+                args[i] = None
+
+        args = [ arg for arg in args if arg != None ]
+        if params['url']:
+            title_info = self.bot.get_api_title_info(params['url'])
+            params['title_name'] = title_info.name
+            params['score'] = title_info.score
+            params['duration'] = title_info.duration
+            params['num_of_episodes'] = title_info.num_of_episodes
+            params['difficulty'] = title_info.difficulty            
+
+        if len(args) > 1:
+            raise BotErr('Bad argumnets')
+        if len(args) == 1:
+            params['title_name'] = args[0]
+        
+        return params

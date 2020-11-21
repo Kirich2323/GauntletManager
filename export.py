@@ -68,11 +68,20 @@ class ColWriter:
         cell.horizontal_alignment = HorizontalAlignment.CENTER
         self.add_cell(cell)
 
-    def write_title(self, title, failed=False):
-        cell = self.new_cell(title.name)
+    def write_title(self, title, failed=False, allow_hidden = False):
+        url = title.url
+        name = title.name    
+
+        if title.is_hidden and allow_hidden:
+            url = None
+            name = '?'*5 #''.join([ '?' if x.isalnum() else x for x in name ])
+
+        cell = self.new_cell(name)
+
         if title.url is not None:
-            cell.value = f'=HYPERLINK("{ title.url }"; "{ title.name }")'
+            cell.value = f'=HYPERLINK("{ url }"; "{ name }")'
             cell.set_text_format('underline', False)
+        
         user = self.users[title.participant_id]
         cell.color = col2tuple(user.color)
         if failed:
@@ -103,7 +112,7 @@ def update_stats(stats, participant, score, num_rounds):
     n = 1 if n is None else n + 1
     stats[id] = (min_, max_, sum_, n)
 
-def sync_export(worksheet, users_participants, rounds_rolls, pools_titles, all_titles):
+def sync_export(worksheet, users_participants, rounds_rolls, pools_titles, all_titles, allow_hidden):
     writer = ColWriter(users_participants)
     writer.write_header('Participants')
     sorted_participants = list(map(lambda x: x[1], sorted(users_participants, key=lambda x: x[0].name)))
@@ -145,7 +154,7 @@ def sync_export(worksheet, users_participants, rounds_rolls, pools_titles, all_t
         writer.write_header(f'{ pool.name } (unused titles)')
         for title in titles:
             if not title.is_used:
-                writer.write_title(title)
+                writer.write_title(title, allow_hidden=allow_hidden)
         writer.next_col()
 
     # Cell((0, 0)) clears the entire screen
@@ -159,6 +168,7 @@ async def export(spreadsheet_key, challenge):
     except WorksheetNotFound:
         worksheet = spreadsheet.add_worksheet(challenge.name)
 
+    has_started = await challenge.has_started()
     users_participants = await challenge.fetch_users_participants()
     pools = await challenge.fetch_pools()
     pool_titles = [ await pool.fetch_titles() for pool in pools ]
@@ -167,6 +177,4 @@ async def export(spreadsheet_key, challenge):
     rounds = await challenge.fetch_rounds()
     rounds_rolls = list(zip(rounds, [ await round.fetch_rolls() for round in rounds ]))
 
-    loop = asyncio.get_event_loop()
-    await loop.run_in_executor(None,
-        sync_export, worksheet, users_participants, rounds_rolls, pools_titles, all_titles)
+    sync_export(worksheet, users_participants, rounds_rolls, pools_titles, all_titles, (not has_started and challenge.allow_hidden))

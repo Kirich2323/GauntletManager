@@ -118,6 +118,12 @@ class Bot(commands.Bot):
         await guild.update()
         await self.db.commit()
 
+    async def set_allow_hidden(self, ctx, val):
+        state = await State.fetch(self, ctx, allow_started=True)
+        state.cc.allow_hidden = val
+        await state.cc.update()
+        await self.db.commit()
+
     async def end_challenge(self, ctx):
         state = await State.fetch(self, ctx, allow_started=True)
         lr = await state.cc.fetch_last_round()
@@ -211,7 +217,7 @@ class Bot(commands.Bot):
         BotErr.raise_if(await state.cc.has_title(name), f'Title "{name}" already exists.')
         participant = await state.fetch_participant(user)
         pool = await state.fetch_pool(pool)
-        await pool.add_title(participant.id, name, url)
+        await pool.add_title(participant.id, name, url, score, num_of_episodes, duration, difficulty, is_hidden)
         await self.db.commit()
 
     async def fetch_guild_from_ctx(self, ctx, guild_id):
@@ -232,7 +238,12 @@ class Bot(commands.Bot):
                 guild = [ g for g in active_guilds if g.id == guild_id ][0]
         return guild
 
+    async def remove_title(self, ctx, name, is_admin=False):
+        state = await State.fetch(self, ctx, allow_started=is_admin)
         title = await state.fetch_title(name)
+
+        participant = await state.fetch_participant(ctx.message.author)
+        BotErr.raise_if(participant.id != title.participant_id and not is_admin, "Can't remove other's title") 
         BotErr.raise_if(title.is_used, "Cannot delete title that's already been used.")
         await title.delete()
         await self.db.commit()

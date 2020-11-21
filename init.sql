@@ -23,6 +23,7 @@ CREATE TABLE challenge (
 	start_time TIMESTAMP NOT NULL,
 	finish_time TIMESTAMP DEFAULT NULL,
 	award_url TEXT DEFAULT NULL,
+	allow_hidden BOOLEAN NOT NULL DEFAULT 1,
 
 	FOREIGN KEY (guild_id) REFERENCES guild (id)
 );
@@ -57,6 +58,7 @@ CREATE TABLE title (
 	name TEXT NOT NULL,
 	url TEXT,
 	is_used BOOLEAN NOT NULL DEFAULT 0,
+	is_hidden BOOLEAN NOT NULL DEFAULT 0,
 	score FLOAT NOT NULL DEFAULT,
 	duration INTEGER NOT NULL,
 	difficulty INTEGER NOT NULL,
@@ -103,4 +105,12 @@ CREATE TABLE karma_history (
 	"time" TIMESTAMP NOT NULL,
 
 	FOREIGN KEY (user_id) REFERENCES user (id)
+);
+
+CREATE TABLE banned_user (
+	user_id INTEGER NOT NULL,
+	challenge_id INTEGER NOT NULL,
+
+	FOREIGN KEY (user_id) REFERENCES user (id)
+	FOREIGN KEY (challenge_id) REFERENCES challenge (id)
 );

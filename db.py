@@ -103,9 +103,9 @@ class Guild(Relation):
         return await self.db.fetchval('SELECT COUNT(1) FROM challenge WHERE guild_id = ? AND name = ?', [self.id, name])
 
     async def add_challenge(self, name, start_time):
-        id = (await self.db.execute('INSERT INTO challenge (guild_id, name, start_time) VALUES (?, ?, ?)',
+        id = (await self.db.execute('INSERT INTO challenge (guild_id, name, start_time, is_hidden_allowed) VALUES (?, ?, ?)',
             [self.id, name, start_time])).lastrowid
-        return Challenge(self.db, [id, self.id, name, start_time, None, None])
+        return Challenge(self.db, [id, self.id, name, start_time, None, None, 1])
 
     async def fetch_users(self):
         rows = await self.db.fetchall(f'''
@@ -392,7 +392,6 @@ class KarmaHistory(Relation):
             ORDER BY time DESC
             LIMIT 1''', [user_id])
 
-        print(rows)
         if rows:
             return rows[-1][0]
         else:
