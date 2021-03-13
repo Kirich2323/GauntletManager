@@ -323,35 +323,31 @@ class Bot(commands.Bot):
     async def calc_karma(self, round):
         if not round.is_finished:
             return
-        starting_karma = 0
-
         rolls = await round.fetch_rolls()
         time = round.finish_time
+
         for roll in rolls:
             proposer = await roll.fetch_title_author()
-            watcher = await roll.fetch_participant()
-
+            watcher = await roll.fetch_user()
             score = roll.score
-            if score is not None and watcher.id != proposer.id:
-                proposer_karma = await KarmaHistory.fetch_user_karma(self.db, proposer.id)
-                d_karma = score
+            participant = await roll.fetch_participant()
 
-                if not proposer_karma:
-                    proposer_karma = starting_karma + d_karma
-                else:
-                    proposer_karma += d_karma
-                await KarmaHistory.insert_or_update_karma(self.db, proposer.id, proposer_karma, time)
-
+            if participant.failed_round_id == round.id:
                 watcher_karma = await KarmaHistory.fetch_user_karma(self.db, watcher.id)
-                d_karma = score if score < 5 else 5 + (score - 5) * 0.25
-
-                if not watcher_karma:
-                    watcher_karma = starting_karma + d_karma
-                else:
-                    watcher_karma += d_karma
+                watcher_karma -= 25    
                 await KarmaHistory.insert_or_update_karma(self.db, watcher.id, watcher_karma, time)
 
-    # def calculate_karma_diff
+            if score != None:
+                watcher_karma = await KarmaHistory.fetch_user_karma(self.db, watcher.id)
+                title = await roll.fetch_title()
+                watcher_karma += title.difficulty // 10
+                await KarmaHistory.insert_or_update_karma(self.db, watcher.id, watcher_karma, time)
+
+                if 1:#watcher.id != proposer.id:
+                    proposer_karma = await KarmaHistory.fetch_user_karma(self.db, proposer.id)
+                    # proposer_karma += (score-6.5) * (title.difficulty / 10)
+                    proposer_karma -= title.difficulty // 20
+                    await KarmaHistory.insert_or_update_karma(self.db, proposer.id, proposer_karma, time)
     
     async def recalc_karma(self, ctx):
         guild = await Guild.fetch_or_insert(self.db, ctx.message.guild.id)
@@ -360,11 +356,13 @@ class Bot(commands.Bot):
             await KarmaHistory.clear_user_karma_history(self.db, u.id)
 
         challenges = await guild.fetch_challenges()
+
         for c in challenges:
+            print(c.name)
             rounds = await c.fetch_rounds()
             for r in rounds:
                 await self.calc_karma(r)
-        
+
         await self.db.commit()
 
     async def _end_round(self, last_round):
@@ -410,7 +408,7 @@ class Bot(commands.Bot):
             participants = [ p for p in participants if p.id != participant1.id ]
             participant2 = random.choice(participants)
         else:
-        participant2 = await state.fetch_participant(user2)
+            participant2 = await state.fetch_participant(user2)
         roll1 = await last_round.fetch_roll(participant1.id)
         roll2 = await last_round.fetch_roll(participant2.id)
         roll1.title_id, roll2.title_id = roll2.title_id, roll1.title_id

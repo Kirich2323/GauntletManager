@@ -4,6 +4,7 @@ import re
 import os
 import random
 import math
+import discord
 
 from discord import File, Embed
 from discord.ext import commands
@@ -170,7 +171,7 @@ class Admin(commands.Cog):
             return await ctx.send("Can't swap titles between the same user.")
 
         if len(candidates) > 0:
-        user2 = random.choice(candidates)
+          user2 = random.choice(candidates)
         else:
             user2 = None
 
@@ -269,7 +270,7 @@ class Admin(commands.Cog):
             await asyncio.sleep(1)
 
         await ctx.send(f'Round {rnd.num} ({short_fmt(rnd.start_time)} - {short_fmt(rnd.finish_time)}) starts right now.')
-        self.bot.set_is_allowed_hidden(ctx, 0)
+        self.bot.set_allow_hidden(ctx, 0)
 
         await self.bot.sync(ctx)
 

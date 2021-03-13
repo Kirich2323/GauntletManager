@@ -104,8 +104,8 @@ class Guild(Relation):
         return await self.db.fetchval('SELECT COUNT(1) FROM challenge WHERE guild_id = ? AND name = ?', [self.id, name])
 
     async def add_challenge(self, name, start_time):
-        id = (await self.db.execute('INSERT INTO challenge (guild_id, name, start_time, is_hidden_allowed) VALUES (?, ?, ?)',
-            [self.id, name, start_time])).lastrowid
+        id = (await self.db.execute('INSERT INTO challenge (guild_id, name, start_time, allow_hidden) VALUES (?, ?, ?, ?)',
+            [self.id, name, start_time, False])).lastrowid
         return Challenge(self.db, [id, self.id, name, start_time, None, None, 1])
 
     async def fetch_users(self):
@@ -137,7 +137,8 @@ class User(Relation):
             color = '#FFFFFF'
             id = (await db.execute('INSERT INTO user (discord_id, color, name) VALUES (?, ?, ?)',
                 [discord_id, color, name])).lastrowid
-            u = User(db, [id, discord_id, color, name, 0.0])
+            u = User(db, [id, discord_id, color, name])
+            u.update() #todo: fix id setting to null
         return u
 
     async def add_award(self, award_url, time):
@@ -369,7 +370,7 @@ class Roll(Relation):
     async def fetch_title(self):
         return await fromrow(Title, self.db, f'SELECT { Title.COLS } FROM title WHERE id = ?', [self.title_id])
 
-    async def fetch_participant(self):
+    async def fetch_user(self):
         row = await self.db.fetchrow(f'''
             SELECT { User.COLS.join(prefix='U.') }
             FROM roll R
@@ -377,6 +378,14 @@ class Roll(Relation):
             JOIN user U ON P.user_id = U.id
             WHERE R.round_id = ? AND R.participant_id = ?''', [self.round_id, self.participant_id])
         return User(self.db, row)
+
+    async def fetch_participant(self):
+        row = await self.db.fetchrow(f'''
+            SELECT { Participant.COLS.join(prefix='P.') }
+            FROM roll R
+            JOIN participant P ON P.id = R.participant_id
+            WHERE R.round_id = ? AND R.participant_id = ?''', [self.round_id, self.participant_id])
+        return Participant(self.db, row)
 
     async def fetch_title_author(self):          
         row = await self.db.fetchrow(f'''
@@ -406,7 +415,7 @@ class KarmaHistory(Relation):
         if rows:
             return rows[-1][0]
         else:
-            return None # todo: maybe use constant -> starting_karma
+            return 0 # todo: maybe use constant -> starting_karma
 
     @staticmethod
     async def clear_user_karma_history(db, user_id):
