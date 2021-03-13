@@ -590,5 +590,6 @@ if __name__ == '__main__':
         asyncio.run(main())
     except KeyboardInterrupt:
         pass
-    except Exception:
-        pass
+    except Exception as e:
+        print(e)
+    print("Finished")
