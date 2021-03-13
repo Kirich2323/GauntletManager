@@ -267,7 +267,7 @@ class Bot(commands.Bot):
         pool = await state.fetch_pool(pool)
         users_participants = await state.cc.fetch_users_participants()
         users = { up[0].id: up[0] for up in users_participants }
-        participants = [up[1] for up in filter(lambda up: not up[1].has_failed(), users_participants)]
+        participants = [ up[1] for up in filter(lambda up: not up[1].has_failed(), users_participants) ]
         BotErr.raise_if(len(participants) == 0, 'Not enough participants to start a round.')
         titles = await pool.fetch_unused_titles()
         BotErr.raise_if(len(titles) < len(participants), f'Not enough titles in "{pool}" pool.')
