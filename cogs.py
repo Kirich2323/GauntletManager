@@ -43,6 +43,7 @@ class GuildAmbiguity(BotErr):
         self.guilds = guilds
 
 def _is_admin(ctx):
+    if type(ctx.message.author) == discord.User: return False
     return 'bot commander' in map(lambda x: x.name.lower(), ctx.message.author.roles)
 
 def _is_in_dm(ctx):
