@@ -550,8 +550,11 @@ class Bot(commands.Bot):
     async def karma_graph(self, ctx, users):
         # state = await State.fetch(self, ctx, allow_started=True)
         sns.set_theme()
+        sns.set(style="darkgrid")
+        sns.set_context("talk")
+        sns.set_palette("tab10")
         fig = plt.figure()
-        plt.xticks(rotation=30)
+        plt.xticks(rotation=90)
         for user in users:
             user = await User.fetch_or_insert(self.db, user.id, user.name) # todo: fix fetching user being state function # await state.fetch_user(user)
             history = await KarmaHistory.fetch_karma_history(self.db, user.id)
@@ -561,11 +564,16 @@ class Bot(commands.Bot):
 
             times = [ entry.time for entry in history ]
             karmas = [ entry.karma for entry in history ]
-            plt.plot(times, karmas, label = user.name)
+
+            a = open('tmp.txt', 'w')
+            a.write(','.join([str(x)for x in times]))
+            a.write('\n')
+            a.write(','.join([str(x)for x in karmas]))
+            plt.plot(times, karmas, label = user.name, marker='.')
          
         plt.legend()
         pic_name = gen_fname('.png')
-        fig.savefig(pic_name, dpi=900, marker='.')
+        fig.savefig(pic_name, dpi=900, marker='.', bbox_inches='tight')
         await ctx.send(file=File(pic_name))
         os.remove(pic_name)
         
